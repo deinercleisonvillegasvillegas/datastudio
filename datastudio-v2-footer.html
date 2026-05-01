@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据 DataStudio v2 — Power Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&family=JetBrains+Mono:wght@300;400;500&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --ink:#0D0D0D;--ink2:#1A1A1A;--ink3:#2A2A2A;
+  --paper:#F7F4EE;--paper2:#EFEBE2;
+  --red:#C0392B;--red2:#E74C3C;
+  --gold:#B8860B;--blue:#185FA5;--green:#27AE60;
+  --muted:#6B6560;--border:rgba(13,13,13,0.12);
+  --mono:'JetBrains Mono',monospace;
+  --serif:'Noto Serif SC',serif;
+  --sans:'Noto Sans SC',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{font-size:15px;}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);min-height:100vh;line-height:1.6;}
+
+/* HEADER */
+header{background:var(--ink);color:var(--paper);padding:0 40px;height:56px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--red);position:sticky;top:0;z-index:100;}
+.logo{display:flex;align-items:baseline;gap:10px;}
+.logo-zh{font-family:var(--serif);font-size:20px;color:var(--red2);letter-spacing:.05em;}
+.logo-en{font-family:var(--mono);font-size:11px;color:rgba(247,244,238,.45);text-transform:uppercase;letter-spacing:.2em;}
+.header-status{font-family:var(--mono);font-size:10px;color:rgba(247,244,238,.4);text-transform:uppercase;letter-spacing:.15em;}
+.status-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#2ecc71;margin-right:6px;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* LAYOUT */
+.app{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 56px);}
+
+/* SIDEBAR */
+.sidebar{background:var(--ink2);color:var(--paper);padding:24px 0;border-right:1px solid rgba(255,255,255,.06);position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;display:flex;flex-direction:column;}
+.sidebar-section{padding:6px 20px 4px;font-family:var(--mono);font-size:9px;color:rgba(247,244,238,.25);text-transform:uppercase;letter-spacing:.25em;margin-top:14px;}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;font-family:var(--sans);font-size:13px;color:rgba(247,244,238,.55);border:none;background:none;width:100%;text-align:left;transition:all .15s;border-left:2px solid transparent;}
+.nav-btn:hover{color:var(--paper);background:rgba(255,255,255,.04);}
+.nav-btn.active{color:var(--paper);border-left-color:var(--red);background:rgba(192,57,43,.1);}
+.nav-btn .ni{font-size:15px;width:18px;}
+.file-info{margin:16px;padding:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:4px;font-family:var(--mono);font-size:10px;color:rgba(247,244,238,.4);display:none;}
+.file-info.show{display:block;}
+.file-info .fi-name{color:var(--paper);font-size:11px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fi-badge{display:inline-block;background:var(--red);color:white;padding:1px 6px;border-radius:2px;font-size:9px;margin-top:4px;}
+
+/* MAIN */
+.main{padding:32px 40px;overflow-y:auto;}
+.panel{display:none;animation:fadeUp .3s ease;}
+.panel.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+
+/* UPLOAD */
+.upload-zone{border:2px dashed var(--border);border-radius:8px;padding:60px 40px;text-align:center;cursor:pointer;transition:all .2s;background:var(--paper2);}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--red);background:rgba(192,57,43,.03);}
+.upload-zh{font-family:var(--serif);font-size:36px;color:var(--ink3);margin-bottom:8px;}
+.upload-sub{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.2em;margin-bottom:24px;}
+.upload-formats{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;}
+.fmt-badge{font-family:var(--mono);font-size:10px;padding:4px 12px;border:1px solid var(--border);border-radius:2px;color:var(--muted);}
+#fileInput{display:none;}
+
+/* PAGE TITLES */
+.page-title{margin-bottom:24px;display:flex;align-items:baseline;gap:12px;}
+.page-title h2{font-family:var(--serif);font-size:22px;font-weight:700;}
+.page-title .sub{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.2em;}
+
+/* CONTROLS */
+.table-controls{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.ctrl-input{font-family:var(--mono);font-size:12px;padding:6px 12px;border:1px solid var(--border);background:var(--paper);color:var(--ink);border-radius:3px;outline:none;transition:border-color .2s;}
+.ctrl-input:focus{border-color:var(--red);}
+.ctrl-btn{font-family:var(--mono);font-size:11px;padding:6px 16px;background:var(--ink);color:var(--paper);border:none;border-radius:3px;cursor:pointer;text-transform:uppercase;letter-spacing:.1em;transition:background .15s;}
+.ctrl-btn:hover{background:var(--red);}
+.ctrl-btn.red{background:var(--red);}
+.ctrl-btn.red:hover{background:var(--red2);}
+.ctrl-btn.blue{background:var(--blue);}
+.ctrl-btn.blue:hover{background:#2980B9;}
+.ctrl-btn.green{background:var(--green);}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:4px;background:white;}
+table.dt{width:100%;border-collapse:collapse;font-size:13px;}
+table.dt thead tr{background:var(--ink);color:var(--paper);}
+table.dt th{padding:8px 14px;font-family:var(--mono);font-size:10px;font-weight:400;text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;cursor:pointer;user-select:none;}
+table.dt th:hover{background:var(--red);}
+table.dt th.sorted-asc::after{content:' ↑';color:var(--red2);}
+table.dt th.sorted-desc::after{content:' ↓';color:var(--red2);}
+table.dt tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
+table.dt tbody tr:hover{background:rgba(192,57,43,.04);}
+table.dt td{padding:7px 14px;font-family:var(--mono);font-size:12px;white-space:nowrap;color:var(--ink3);max-width:200px;overflow:hidden;text-overflow:ellipsis;}
+table.dt td.num{color:var(--red);text-align:right;}
+table.dt td.null-val{color:var(--muted);font-style:italic;}
+table.dt td.outlier{background:rgba(192,57,43,.12);}
+
+/* PAGINATION */
+.pagination{display:flex;align-items:center;gap:8px;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--muted);}
+.pg-btn{padding:4px 10px;border:1px solid var(--border);background:none;cursor:pointer;border-radius:2px;font-family:var(--mono);font-size:11px;transition:all .15s;}
+.pg-btn:hover{border-color:var(--red);color:var(--red);}
+.pg-btn.active{background:var(--red);color:white;border-color:var(--red);}
+
+/* STAT CARDS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:28px;}
+.stat-card{background:white;border:1px solid var(--border);border-radius:4px;padding:16px 18px;border-top:2px solid var(--red);}
+.stat-card.blue{border-top-color:var(--blue);}
+.stat-card.green{border-top-color:var(--green);}
+.stat-card.gold{border-top-color:var(--gold);}
+.sc-label{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.15em;margin-bottom:4px;}
+.sc-val{font-family:var(--serif);font-size:24px;color:var(--ink);font-weight:700;line-height:1.1;}
+.sc-sub{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;}
+
+/* PROFILE CARDS */
+.col-profiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:28px;}
+.col-card{background:white;border:1px solid var(--border);border-radius:4px;padding:14px 16px;}
+.cc-name{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink);margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cc-type{display:inline-block;padding:1px 8px;border-radius:2px;font-family:var(--mono);font-size:9px;text-transform:uppercase;margin-bottom:8px;}
+.type-num{background:rgba(192,57,43,.1);color:var(--red);}
+.type-str{background:rgba(184,134,11,.1);color:var(--gold);}
+.cc-stat{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.7;}
+.cc-stat span{color:var(--ink);}
+.mini-bar-wrap{margin-top:8px;}
+.mini-bar-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;font-family:var(--mono);font-size:9px;}
+.mini-bar-label{width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);}
+.mini-bar-track{flex:1;height:5px;background:var(--paper2);border-radius:2px;overflow:hidden;}
+.mini-bar-fill{height:100%;background:var(--red);border-radius:2px;transition:width .5s ease;}
+.mini-bar-count{width:30px;text-align:right;color:var(--ink3);}
+
+/* CHARTS */
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:20px;}
+.chart-card{background:white;border:1px solid var(--border);border-radius:4px;padding:20px;}
+.chart-card .cc-title{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}
+.chart-card canvas{max-height:280px;}
+
+/* TRANSFORM */
+.transform-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
+.tx-card{background:white;border:1px solid var(--border);border-radius:4px;padding:20px;}
+.tx-card h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:14px;}
+.null-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);}
+.null-pct{color:var(--red);}
+
+/* QUERY */
+.query-box{background:var(--ink);border-radius:6px;padding:24px;margin-bottom:20px;}
+.query-label{font-family:var(--mono);font-size:9px;color:rgba(247,244,238,.3);text-transform:uppercase;letter-spacing:.2em;margin-bottom:10px;}
+.query-examples{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.qex{font-family:var(--mono);font-size:10px;padding:4px 10px;border:1px solid rgba(192,57,43,.4);border-radius:2px;color:rgba(247,244,238,.5);cursor:pointer;transition:all .15s;background:none;}
+.qex:hover{border-color:var(--red2);color:var(--paper);}
+#queryInput{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:4px;padding:10px 14px;color:var(--paper);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .2s;}
+#queryInput:focus{border-color:var(--red);}
+#queryInput::placeholder{color:rgba(247,244,238,.2);}
+
+/* ═══ NEW: KPI DASHBOARD ═══ */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:28px;}
+.kpi-card{background:white;border:1px solid var(--border);border-radius:6px;padding:18px 20px;position:relative;overflow:hidden;}
+.kpi-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--kpi-color,var(--red));}
+.kpi-label{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.15em;margin-bottom:6px;}
+.kpi-value{font-family:var(--serif);font-size:28px;font-weight:700;color:var(--ink);line-height:1;}
+.kpi-meta{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px;}
+.kpi-col{font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:8px;padding:3px 8px;background:var(--paper2);border-radius:2px;display:inline-block;}
+
+/* ═══ NEW: SLICER ═══ */
+.slicers-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding:16px;background:white;border:1px solid var(--border);border-radius:4px;}
+.slicer-block{display:flex;flex-direction:column;gap:4px;}
+.slicer-label{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;}
+.slicer-select{font-family:var(--mono);font-size:11px;padding:5px 10px;border:1px solid var(--border);border-radius:3px;background:var(--paper);color:var(--ink);outline:none;cursor:pointer;min-width:130px;}
+.slicer-select:focus{border-color:var(--red);}
+
+/* ═══ NEW: PIVOT TABLE ═══ */
+.pivot-config{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;margin-bottom:16px;align-items:end;}
+.pivot-field label{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:5px;}
+table.pivot{width:100%;border-collapse:collapse;font-size:12px;}
+table.pivot th{background:var(--ink3);color:var(--paper);padding:7px 12px;font-family:var(--mono);font-size:10px;font-weight:400;text-align:left;}
+table.pivot th.pivot-header{background:var(--red);text-align:center;}
+table.pivot td{padding:6px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;}
+table.pivot td.pivot-dim{font-weight:500;background:var(--paper2);}
+table.pivot td.pivot-val{text-align:right;color:var(--blue);}
+table.pivot tr:hover td{background:rgba(192,57,43,.03);}
+table.pivot tfoot td{background:var(--paper2);font-weight:500;border-top:2px solid var(--border);}
+
+/* ═══ NEW: CALCULATED COLUMNS ═══ */
+.formula-editor{background:var(--ink);border-radius:6px;padding:20px;margin-bottom:16px;}
+.formula-header{font-family:var(--mono);font-size:9px;color:rgba(247,244,238,.3);text-transform:uppercase;letter-spacing:.2em;margin-bottom:10px;}
+.formula-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+#colNameInput,#formulaInput{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:3px;padding:8px 12px;color:var(--paper);font-family:var(--mono);font-size:12px;outline:none;transition:border-color .2s;}
+#colNameInput:focus,#formulaInput:focus{border-color:var(--red);}
+#colNameInput{width:160px;}
+#formulaInput{flex:1;min-width:250px;}
+.formula-hint{font-family:var(--mono);font-size:10px;color:rgba(247,244,238,.3);margin-top:8px;}
+.formula-tokens{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;}
+.ftoken{font-family:var(--mono);font-size:9px;padding:2px 8px;border:1px solid rgba(192,57,43,.4);border-radius:2px;color:rgba(247,244,238,.5);cursor:pointer;transition:all .15s;}
+.ftoken:hover{border-color:var(--red2);color:var(--paper);}
+
+/* ═══ NEW: CORRELACION ═══ */
+.corr-grid-wrap{overflow-x:auto;margin-top:12px;}
+table.corr{border-collapse:collapse;font-size:11px;font-family:var(--mono);}
+table.corr th{padding:8px 10px;background:var(--ink);color:var(--paper);font-weight:400;font-size:9px;white-space:nowrap;}
+table.corr td{padding:8px 10px;text-align:center;font-size:11px;cursor:default;}
+table.corr td.corr-high{background:#C0392B;color:white;}
+table.corr td.corr-med{background:#E8967A;color:var(--ink);}
+table.corr td.corr-low{background:#F5C6B5;color:var(--ink);}
+table.corr td.corr-neg-med{background:#85B7EB;color:var(--ink);}
+table.corr td.corr-neg-high{background:#185FA5;color:white;}
+table.corr td.corr-zero{background:white;color:var(--muted);}
+
+/* ═══ NEW: OUTLIERS ═══ */
+.outlier-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:20px;}
+.outlier-card{background:white;border:1px solid var(--border);border-radius:4px;padding:14px 16px;}
+.oc-col{font-family:var(--mono);font-size:11px;font-weight:500;margin-bottom:6px;}
+.oc-count{font-family:var(--serif);font-size:22px;color:var(--red);font-weight:700;}
+.oc-range{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;}
+
+/* COLUMN MANAGER */
+.col-manager{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+.col-pill{display:flex;align-items:center;gap:6px;padding:5px 10px;background:white;border:1px solid var(--border);border-radius:3px;font-family:var(--mono);font-size:10px;cursor:default;}
+.col-pill.hidden{opacity:.4;text-decoration:line-through;}
+.col-pill-toggle{cursor:pointer;color:var(--muted);font-size:14px;line-height:1;}
+.col-pill-toggle:hover{color:var(--red);}
+
+/* EMPTY / TOAST */
+.empty-state{text-align:center;padding:80px 40px;color:var(--muted);}
+.empty-zh{font-family:var(--serif);font-size:48px;margin-bottom:12px;opacity:.2;}
+.empty-msg{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.2em;}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:12px;padding:12px 20px;border-radius:4px;border-left:3px solid var(--red);z-index:9999;transform:translateY(80px);opacity:0;transition:all .3s;}
+.toast.show{transform:translateY(0);opacity:1;}
+.divider{height:1px;background:var(--border);margin:24px 0;}
+
+@media(max-width:768px){
+  .app{grid-template-columns:1fr;}
+  .sidebar{position:static;height:auto;}
+  .main{padding:20px;}
+  .charts-grid,.transform-row,.pivot-config{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-zh">数据</span>
+    <span class="logo-en">DataStudio v2 · Power Edition</span>
+  </div>
+  <div class="header-status">
+    <span class="status-dot"></span>
+    <span id="hStatus">Listo · Sin datos</span>
+  </div>
+</header>
+
+<div class="app">
+<nav class="sidebar">
+  <div class="sidebar-section">Datos</div>
+  <button class="nav-btn active" onclick="showPanel('upload')" data-panel="upload"><span class="ni">⬆</span> Cargar</button>
+  <button class="nav-btn" onclick="showPanel('explore')" data-panel="explore"><span class="ni">⊞</span> Explorar</button>
+  <button class="nav-btn" onclick="showPanel('columns')" data-panel="columns"><span class="ni">⊟</span> Columnas</button>
+
+  <div class="sidebar-section">Análisis</div>
+  <button class="nav-btn" onclick="showPanel('kpi')" data-panel="kpi"><span class="ni">◈</span> Dashboard KPI</button>
+  <button class="nav-btn" onclick="showPanel('profile')" data-panel="profile"><span class="ni">≡</span> Perfil Datos</button>
+  <button class="nav-btn" onclick="showPanel('outliers')" data-panel="outliers"><span class="ni">⊕</span> Outliers</button>
+  <button class="nav-btn" onclick="showPanel('corr')" data-panel="corr"><span class="ni">⊗</span> Correlación</button>
+
+  <div class="sidebar-section">Modelado</div>
+  <button class="nav-btn" onclick="showPanel('pivot')" data-panel="pivot"><span class="ni">⊛</span> Pivot Table</button>
+  <button class="nav-btn" onclick="showPanel('calc')" data-panel="calc"><span class="ni">∑</span> Col. Calculadas</button>
+  <button class="nav-btn" onclick="showPanel('transform')" data-panel="transform"><span class="ni">⟳</span> Transformar</button>
+
+  <div class="sidebar-section">Visualizar</div>
+  <button class="nav-btn" onclick="showPanel('charts')" data-panel="charts"><span class="ni">◉</span> Gráficos</button>
+  <button class="nav-btn" onclick="showPanel('query')" data-panel="query"><span class="ni">❯</span> Consultar</button>
+
+  <div class="sidebar-section" style="margin-top:auto">Dataset</div>
+  <div class="file-info" id="fileInfo">
+    <div class="fi-name" id="fiName">—</div>
+    <div style="color:rgba(247,244,238,.4);font-size:10px" id="fiStat">—</div>
+    <div><span class="fi-badge" id="fiType">CSV</span></div>
+  </div>
+</nav>
+
+<main class="main">
+
+<!-- ══════ UPLOAD ══════ -->
+<div class="panel active" id="panel-upload">
+  <div class="page-title"><h2>Cargar Dataset</h2><span class="sub">CSV · Excel · Arrastra o selecciona</span></div>
+  <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-zh">数据上传</div>
+    <div class="upload-sub">Arrastra tu archivo aquí o haz clic para seleccionar</div>
+    <div class="upload-formats">
+      <span class="fmt-badge">CSV</span><span class="fmt-badge">XLSX</span><span class="fmt-badge">XLS</span><span class="fmt-badge">TSV</span>
+    </div>
+    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.tsv"/>
+  </div>
+  <div id="uploadSummary" style="display:none;margin-top:24px;"></div>
+</div>
+
+<!-- ══════ EXPLORE ══════ -->
+<div class="panel" id="panel-explore">
+  <div class="page-title"><h2>Explorar Tabla</h2><span class="sub" id="exploreSubtitle">—</span></div>
+  <div class="slicers-row" id="slicersRow" style="display:none"></div>
+  <div class="table-controls">
+    <input type="text" class="ctrl-input" id="searchInput" placeholder="Buscar..." oninput="filterTable()" style="width:180px">
+    <select class="ctrl-input" id="colFilter" onchange="filterTable()"><option value="">Todas las columnas</option></select>
+    <input type="number" class="ctrl-input" id="rowFrom" placeholder="Desde fila" min="1" style="width:105px" oninput="filterTable()">
+    <input type="number" class="ctrl-input" id="rowTo" placeholder="Hasta fila" min="1" style="width:105px" oninput="filterTable()">
+    <button class="ctrl-btn red" onclick="resetFilters()">Reset</button>
+    <button class="ctrl-btn" onclick="exportFiltered()">↓ CSV</button>
+    <button class="ctrl-btn blue" onclick="exportExcel()">↓ Excel</button>
+  </div>
+  <div class="table-wrap" id="tableWrap"><div class="empty-state"><div class="empty-zh">空</div><div class="empty-msg">Sin datos</div></div></div>
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- ══════ COLUMN MANAGER ══════ -->
+<div class="panel" id="panel-columns">
+  <div class="page-title"><h2>Gestión de Columnas</h2><span class="sub">Ocultar · Renombrar · Reordenar</span></div>
+  <div id="colManagerContent"><div class="empty-state"><div class="empty-zh">列</div><div class="empty-msg">Sin datos</div></div></div>
+</div>
+
+<!-- ══════ KPI DASHBOARD ══════ -->
+<div class="panel" id="panel-kpi">
+  <div class="page-title"><h2>Dashboard KPI</h2><span class="sub">Métricas automáticas · Suma · Promedio · Máx · Mín</span></div>
+  <div id="kpiContent"><div class="empty-state"><div class="empty-zh">指</div><div class="empty-msg">Sin datos</div></div></div>
+</div>
+
+<!-- ══════ PROFILE ══════ -->
+<div class="panel" id="panel-profile">
+  <div class="page-title"><h2>Perfil de Columnas</h2><span class="sub">Estadísticas · Nulos · Distribución</span></div>
+  <div class="stats-grid" id="statsGrid"></div>
+  <div class="col-profiles" id="colProfiles"><div class="empty-state"><div class="empty-zh">统</div><div class="empty-msg">Sin datos</div></div></div>
+</div>
+
+<!-- ══════ OUTLIERS ══════ -->
+<div class="panel" id="panel-outliers">
+  <div class="page-title"><h2>Detección de Outliers</h2><span class="sub">Método IQR · 1.5× rango intercuartílico</span></div>
+  <div id="outliersContent"><div class="empty-state"><div class="empty-zh">异</div><div class="empty-msg">Sin datos</div></div></div>
+</div>
+
+<!-- ══════ CORRELACIÓN ══════ -->
+<div class="panel" id="panel-corr">
+  <div class="page-title"><h2>Matriz de Correlación</h2><span class="sub">Pearson · Columnas numéricas</span></div>
+  <div id="corrContent"><div class="empty-state"><div class="empty-zh">关</div><div class="empty-msg">Sin datos</div></div></div>
+</div>
+
+<!-- ══════ PIVOT TABLE ══════ -->
+<div class="panel" id="panel-pivot">
+  <div class="page-title"><h2>Pivot Table</h2><span class="sub">Filas × Columnas × Agregación</span></div>
+  <div class="pivot-config">
+    <div class="pivot-field"><label>Filas (dimensión)</label><select class="ctrl-input" id="pivotRow"><option>— columna —</option></select></div>
+    <div class="pivot-field"><label>Columnas (dimensión)</label><select class="ctrl-input" id="pivotCol"><option>— columna —</option></select></div>
+    <div class="pivot-field"><label>Valores (numérico)</label><select class="ctrl-input" id="pivotVal"><option>— columna —</option></select></div>
+    <div class="pivot-field"><label>Agregación</label>
+      <select class="ctrl-input" id="pivotAgg">
+        <option value="sum">Suma</option><option value="avg">Promedio</option>
+        <option value="count">Conteo</option><option value="max">Máximo</option><option value="min">Mínimo</option>
+      </select>
+    </div>
+  </div>
+  <button class="ctrl-btn red" onclick="buildPivot()" style="margin-bottom:20px">Generar Pivot →</button>
+  <div id="pivotResult"></div>
+</div>
+
+<!-- ══════ COLUMNAS CALCULADAS ══════ -->
+<div class="panel" id="panel-calc">
+  <div class="page-title"><h2>Columnas Calculadas</h2><span class="sub">Crea nuevas columnas con fórmulas</span></div>
+  <div class="formula-editor">
+    <div class="formula-header">▸ Nueva columna</div>
+    <div class="formula-row">
+      <input type="text" id="colNameInput" placeholder="nombre_columna" />
+      <span style="color:rgba(247,244,238,.4);font-family:var(--mono);font-size:14px">=</span>
+      <input type="text" id="formulaInput" placeholder="ej: precio * 1.18  o  ventas / unidades" onkeydown="if(event.key==='Enter')applyFormula()" />
+      <button class="ctrl-btn red" onclick="applyFormula()">Aplicar →</button>
+    </div>
+    <div class="formula-hint">Usa nombres de columnas exactos. Operadores: + - * / ** (potencia). Funciones: ROUND(x) ABS(x) LOG(x) SQRT(x)</div>
+    <div class="formula-tokens" id="formulaTokens"></div>
+  </div>
+  <div id="calcHistory" style="margin-bottom:20px;"></div>
+  <div id="calcPreview"></div>
+</div>
+
+<!-- ══════ TRANSFORM ══════ -->
+<div class="panel" id="panel-transform">
+  <div class="page-title"><h2>Transformar Datos</h2><span class="sub">Limpieza · Normalización · Calidad</span></div>
+  <div id="transformContent"><div class="empty-state"><div class="empty-zh">变</div><div class="empty-msg">Sin datos</div></div></div>
+</div>
+
+<!-- ══════ CHARTS ══════ -->
+<div class="panel" id="panel-charts">
+  <div class="page-title"><h2>Gráficos</h2><span class="sub">Automáticos + Personalizados</span></div>
+  <div class="table-controls" style="margin-bottom:20px">
+    <select class="ctrl-input" id="chartX"><option>— Eje X —</option></select>
+    <select class="ctrl-input" id="chartY"><option>— Eje Y (numérico) —</option></select>
+    <select class="ctrl-input" id="chartType">
+      <option value="bar">Barras</option>
+      <option value="bar-stacked">Barras Apiladas</option>
+      <option value="bar-100">Barras 100%</option>
+      <option value="line">Línea</option>
+      <option value="line-area">Área</option>
+      <option value="scatter">Dispersión</option>
+      <option value="doughnut">Dona</option>
+      <option value="radar">Radar</option>
+    </select>
+    <button class="ctrl-btn red" onclick="buildCustomChart()">Generar →</button>
+    <button class="ctrl-btn" onclick="buildCharts()">Auto-charts</button>
+  </div>
+  <div class="charts-grid" id="chartsGrid"><div class="empty-state"><div class="empty-zh">图</div><div class="empty-msg">Sin datos</div></div></div>
+</div>
+
+<!-- ══════ QUERY ══════ -->
+<div class="panel" id="panel-query">
+  <div class="page-title"><h2>Consultar Datos</h2><span class="sub">Lenguaje natural · Solo datos reales</span></div>
+  <div class="query-box">
+    <div class="query-label">▸ Consulta en español</div>
+    <input type="text" id="queryInput" placeholder="ej: primeras 5 filas donde ventas > 1000" onkeydown="if(event.key==='Enter')runQuery()" />
+    <div class="query-examples">
+      <button class="qex" onclick="setQuery('primeras 10 filas')">primeras 10 filas</button>
+      <button class="qex" onclick="setQuery('últimas 5 filas')">últimas 5 filas</button>
+      <button class="qex" onclick="setQuery('estadísticas numéricas')">estadísticas</button>
+      <button class="qex" onclick="setQuery('contar por columna')">contar por columna</button>
+      <button class="qex" onclick="setQuery('valores únicos de columna')">valores únicos</button>
+      <button class="qex" onclick="setQuery('filas con nulos')">filas con nulos</button>
+      <button class="qex" onclick="setQuery('ordenar por columna descendente')">ordenar desc</button>
+      <button class="qex" onclick="setQuery('outliers en columna')">outliers</button>
+    </div>
+  </div>
+  <button class="ctrl-btn red" onclick="runQuery()" style="margin-bottom:20px">Ejecutar →</button>
+  <div id="queryResult"></div>
+</div>
+
+</main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let rawData=[], headers=[], filteredData=[];
+let hiddenCols=new Set(), renamedCols={};
+let fileName='', sortCol=null, sortDir=1;
+let currentPage=0; const PAGE_SIZE=50;
+let chartInstances={};
+let calcHistory=[];
+let activeSlicers={};
+
+const COLORS=['#C0392B','#2980B9','#27AE60','#B8860B','#8E44AD','#16A085','#D35400','#2C3E50','#E74C3C','#3498DB'];
+
+// ═══════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════
+function showPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  document.querySelector(`[data-panel="${id}"]`).classList.add('active');
+  if(id==='profile'&&rawData.length) buildProfile();
+  if(id==='charts'&&rawData.length) buildCharts();
+  if(id==='transform'&&rawData.length) buildTransform();
+  if(id==='kpi'&&rawData.length) buildKPI();
+  if(id==='outliers'&&rawData.length) buildOutliers();
+  if(id==='corr'&&rawData.length) buildCorrelation();
+  if(id==='columns'&&rawData.length) buildColManager();
+  if(id==='calc'&&rawData.length) buildCalcPanel();
+}
+
+// ═══════════════════════════════════════════════
+// UPLOAD
+// ═══════════════════════════════════════════════
+const dropZone=document.getElementById('dropZone');
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag');});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0]);});
+document.getElementById('fileInput').addEventListener('change',e=>{if(e.target.files[0])processFile(e.target.files[0]);});
+
+function processFile(file){
+  const ext=file.name.split('.').pop().toLowerCase();
+  toast('Cargando '+file.name+'...');
+  if(ext==='csv'||ext==='tsv'){
+    Papa.parse(file,{header:true,dynamicTyping:true,skipEmptyLines:true,delimiter:ext==='tsv'?'\t':'',
+      complete:res=>loadData(res.data,file.name,'CSV'),error:e=>toast('Error: '+e.message)});
+  } else if(ext==='xlsx'||ext==='xls'){
+    const r=new FileReader();
+    r.onload=e=>{const wb=XLSX.read(e.target.result,{type:'binary'});const ws=wb.Sheets[wb.SheetNames[0]];loadData(XLSX.utils.sheet_to_json(ws,{defval:null}),file.name,'XLSX');};
+    r.readAsBinaryString(file);
+  } else toast('Formato no soportado.');
+}
+
+function loadData(data,name,type){
+  if(!data||!data.length){toast('Archivo vacío.');return;}
+  rawData=data; filteredData=[...rawData];
+  headers=Object.keys(rawData[0]);
+  hiddenCols=new Set(); renamedCols={}; calcHistory=[];
+  fileName=name;
+  document.getElementById('fiName').textContent=name;
+  document.getElementById('fiStat').textContent=`${rawData.length.toLocaleString()} filas · ${headers.length} cols`;
+  document.getElementById('fiType').textContent=type;
+  document.getElementById('fileInfo').classList.add('show');
+  document.getElementById('hStatus').textContent=`${name} · ${rawData.length.toLocaleString()} filas`;
+  populateSelects(); buildSlicers();
+  renderUploadSummary(name,type);
+  currentPage=0; sortCol=null; renderTable();
+  toast(`✓ ${rawData.length.toLocaleString()} filas · ${headers.length} columnas`);
+  setTimeout(()=>showPanel('explore'),600);
+}
+
+function populateSelects(){
+  const sel=(id,filter=null)=>{
+    const el=document.getElementById(id);
+    el.innerHTML='<option value="">—</option>';
+    headers.forEach(h=>{if(!filter||filter(h))el.innerHTML+=`<option value="${esc(h)}">${h}</option>`;});
+  };
+  sel('colFilter'); sel('chartX'); sel('chartY',h=>isNumericCol(h));
+  sel('pivotRow'); sel('pivotCol');
+  sel('pivotVal',h=>isNumericCol(h));
+}
+
+function renderUploadSummary(name,type){
+  const numCols=headers.filter(h=>isNumericCol(h)).length;
+  const nullCount=rawData.reduce((a,r)=>a+headers.filter(h=>r[h]===null||r[h]===''||r[h]===undefined).length,0);
+  const totalCells=rawData.length*headers.length;
+  const nullPct=((nullCount/totalCells)*100).toFixed(1);
+  document.getElementById('uploadSummary').style.display='block';
+  document.getElementById('uploadSummary').innerHTML=`
+    <div class="stats-grid">
+      <div class="stat-card"><div class="sc-label">Filas</div><div class="sc-val">${rawData.length.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="sc-label">Columnas</div><div class="sc-val">${headers.length}</div></div>
+      <div class="stat-card blue"><div class="sc-label">Numéricas</div><div class="sc-val">${numCols}</div></div>
+      <div class="stat-card gold"><div class="sc-label">Texto</div><div class="sc-val">${headers.length-numCols}</div></div>
+      <div class="stat-card ${parseFloat(nullPct)>5?'':'green'}"><div class="sc-label">Completitud</div><div class="sc-val">${(100-parseFloat(nullPct)).toFixed(1)}%</div><div class="sc-sub">${nullCount.toLocaleString()} nulos</div></div>
+      <div class="stat-card"><div class="sc-label">Formato</div><div class="sc-val" style="font-size:18px">${type}</div></div>
+    </div>
+    <div style="margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--muted)">
+      ${headers.map(h=>`<strong>${h}</strong>`).join(' · ')}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════
+// SLICERS (filtros visuales persistentes)
+// ═══════════════════════════════════════════════
+function buildSlicers(){
+  const strCols=headers.filter(h=>!isNumericCol(h)).slice(0,4);
+  if(!strCols.length){document.getElementById('slicersRow').style.display='none';return;}
+  document.getElementById('slicersRow').style.display='flex';
+  let html='';
+  strCols.forEach(col=>{
+    const unique=[...new Set(rawData.map(r=>String(r[col]??'')))].filter(v=>v&&v!=='null').slice(0,30).sort();
+    html+=`<div class="slicer-block">
+      <span class="slicer-label">${col}</span>
+      <select class="slicer-select" onchange="setSlicer('${esc(col)}',this.value)">
+        <option value="">Todos</option>
+        ${unique.map(v=>`<option value="${esc(v)}">${v}</option>`).join('')}
+      </select>
+    </div>`;
+  });
+  document.getElementById('slicersRow').innerHTML=html;
+}
+
+function setSlicer(col,val){
+  if(val==='') delete activeSlicers[col];
+  else activeSlicers[col]=val;
+  filterTable();
+}
+
+// ═══════════════════════════════════════════════
+// TABLE
+// ═══════════════════════════════════════════════
+function visibleHeaders(){return headers.filter(h=>!hiddenCols.has(h));}
+
+function filterTable(){
+  const search=document.getElementById('searchInput').value.toLowerCase();
+  const col=document.getElementById('colFilter').value;
+  const fromRow=parseInt(document.getElementById('rowFrom').value)||1;
+  const toRow=parseInt(document.getElementById('rowTo').value)||rawData.length;
+  let data=rawData.slice(fromRow-1,toRow);
+  // Slicers
+  Object.entries(activeSlicers).forEach(([c,v])=>{data=data.filter(r=>String(r[c]??'')==v);});
+  // Search
+  if(search) data=data.filter(r=>{
+    const t=col?String(r[col]??''):Object.values(r).join(' ');
+    return t.toLowerCase().includes(search);
+  });
+  filteredData=data; currentPage=0;
+  if(sortCol)applySort(); renderTable();
+}
+
+function resetFilters(){
+  document.getElementById('searchInput').value='';
+  document.getElementById('colFilter').value='';
+  document.getElementById('rowFrom').value='';
+  document.getElementById('rowTo').value='';
+  activeSlicers={};
+  document.querySelectorAll('.slicer-select').forEach(s=>s.value='');
+  filteredData=[...rawData]; currentPage=0; sortCol=null; renderTable();
+}
+
+function sortBy(col){if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}applySort();renderTable();}
+function applySort(){
+  filteredData.sort((a,b)=>{
+    const va=a[sortCol],vb=b[sortCol];
+    if(va==null)return 1;if(vb==null)return -1;
+    if(typeof va==='number'&&typeof vb==='number')return(va-vb)*sortDir;
+    return String(va).localeCompare(String(vb))*sortDir;
+  });
+}
+
+// Compute outlier row set for highlighting
+function getOutlierRows(){
+  const outlierSet=new Set();
+  headers.filter(h=>isNumericCol(h)).forEach(h=>{
+    const ols=detectOutliers(h);
+    ols.forEach(idx=>outlierSet.add(idx));
+  });
+  return outlierSet;
+}
+
+function renderTable(){
+  if(!rawData.length)return;
+  const vh=visibleHeaders();
+  document.getElementById('exploreSubtitle').textContent=`${filteredData.length.toLocaleString()} de ${rawData.length.toLocaleString()} filas · ${vh.length} cols visibles`;
+  const start=currentPage*PAGE_SIZE;
+  const pageData=filteredData.slice(start,start+PAGE_SIZE);
+  let html=`<table class="dt"><thead><tr><th style="color:var(--muted)">#</th>`;
+  vh.forEach(h=>{
+    const dn=renamedCols[h]||h;
+    const cls=sortCol===h?(sortDir===1?'sorted-asc':'sorted-desc'):'';
+    html+=`<th class="${cls}" onclick="sortBy('${esc(h)}')">${dn}</th>`;
+  });
+  html+=`</tr></thead><tbody>`;
+  // Build outlier per-col bounds for this page
+  const bounds={};
+  vh.filter(h=>isNumericCol(h)).forEach(h=>{
+    const nums=rawData.map(r=>parseFloat(r[h])).filter(n=>!isNaN(n)).sort((a,b)=>a-b);
+    const q1=nums[Math.floor(nums.length*.25)],q3=nums[Math.floor(nums.length*.75)];
+    const iqr=q3-q1;
+    bounds[h]={lo:q1-1.5*iqr,hi:q3+1.5*iqr};
+  });
+  pageData.forEach((row,i)=>{
+    html+=`<tr><td style="color:var(--muted)">${start+i+1}</td>`;
+    vh.forEach(h=>{
+      const v=row[h];
+      if(v===null||v===undefined||v==='')html+=`<td class="null-val">null</td>`;
+      else if(typeof v==='number'){
+        const isOl=bounds[h]&&(v<bounds[h].lo||v>bounds[h].hi);
+        html+=`<td class="num${isOl?' outlier':''}" title="${isOl?'Outlier':''}">${v.toLocaleString('es-PE',{maximumFractionDigits:4})}</td>`;
+      } else html+=`<td title="${esc(String(v))}">${esc(String(v))}</td>`;
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table>`;
+  document.getElementById('tableWrap').innerHTML=html;
+  renderPagination();
+}
+
+function renderPagination(){
+  const totalPages=Math.ceil(filteredData.length/PAGE_SIZE);
+  let p=`<span>${filteredData.length.toLocaleString()} filas</span>`;
+  if(totalPages>1){
+    p+=`<button class="pg-btn" onclick="goPage(0)">«</button>`;
+    p+=`<button class="pg-btn" onclick="goPage(${currentPage-1})" ${currentPage===0?'disabled':''}>‹</button>`;
+    const lo=Math.max(0,currentPage-2),hi=Math.min(totalPages,lo+5);
+    for(let pp=lo;pp<hi;pp++)p+=`<button class="pg-btn ${pp===currentPage?'active':''}" onclick="goPage(${pp})">${pp+1}</button>`;
+    p+=`<button class="pg-btn" onclick="goPage(${currentPage+1})" ${currentPage>=totalPages-1?'disabled':''}>›</button>`;
+    p+=`<button class="pg-btn" onclick="goPage(${totalPages-1})">»</button>`;
+    p+=`<span>Pág ${currentPage+1}/${totalPages}</span>`;
+  }
+  document.getElementById('pagination').innerHTML=p;
+}
+function goPage(p){const t=Math.ceil(filteredData.length/PAGE_SIZE);currentPage=Math.max(0,Math.min(p,t-1));renderTable();}
+
+// ═══════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════
+function exportFiltered(){
+  if(!filteredData.length)return;
+  const csv=Papa.unparse(filteredData.map(r=>{const o={};visibleHeaders().forEach(h=>{o[renamedCols[h]||h]=r[h];});return o;}));
+  dlBlob(csv,'text/csv','datastudio_export.csv');
+  toast('Exportado CSV');
+}
+
+function exportExcel(){
+  if(!filteredData.length)return;
+  const data=filteredData.map(r=>{const o={};visibleHeaders().forEach(h=>{o[renamedCols[h]||h]=r[h];});return o;});
+  const ws=XLSX.utils.json_to_sheet(data);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Datos');
+  XLSX.writeFile(wb,'datastudio_export.xlsx');
+  toast('Exportado Excel XLSX');
+}
+
+function dlBlob(content,type,name){
+  const b=new Blob([content],{type});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);a.download=name;a.click();
+}
+
+// ═══════════════════════════════════════════════
+// KPI DASHBOARD
+// ═══════════════════════════════════════════════
+function buildKPI(){
+  if(!rawData.length)return;
+  const numCols=headers.filter(h=>isNumericCol(h));
+  const kpiColors=['var(--red)','var(--blue)','var(--green)','var(--gold)','#8E44AD','#16A085'];
+  let html='<div class="kpi-grid">';
+  numCols.forEach((h,i)=>{
+    const nums=rawData.map(r=>parseFloat(r[h])).filter(n=>!isNaN(n));
+    if(!nums.length)return;
+    const sum=nums.reduce((a,b)=>a+b,0);
+    const avg=sum/nums.length;
+    const max=Math.max(...nums),min=Math.min(...nums);
+    const color=kpiColors[i%kpiColors.length];
+    const fmt=n=>n>=1e6?(n/1e6).toFixed(2)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':n.toLocaleString('es-PE',{maximumFractionDigits:2});
+    html+=`<div class="kpi-card" style="--kpi-color:${color}">
+      <div class="kpi-col">${renamedCols[h]||h}</div>
+      <div class="kpi-label">Suma total</div>
+      <div class="kpi-value">${fmt(sum)}</div>
+      <div class="kpi-meta">Avg ${fmt(avg)} · Máx ${fmt(max)} · Mín ${fmt(min)}</div>
+    </div>`;
+  });
+  // String KPIs
+  const strCols=headers.filter(h=>!isNumericCol(h)).slice(0,3);
+  strCols.forEach((h,i)=>{
+    const unique=new Set(rawData.map(r=>r[h])).size;
+    const freq={};rawData.forEach(r=>{const k=String(r[h]??'');freq[k]=(freq[k]||0)+1;});
+    const top=Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
+    html+=`<div class="kpi-card" style="--kpi-color:${kpiColors[(numCols.length+i)%kpiColors.length]}">
+      <div class="kpi-col">${renamedCols[h]||h}</div>
+      <div class="kpi-label">Valores únicos</div>
+      <div class="kpi-value">${unique.toLocaleString()}</div>
+      <div class="kpi-meta">Más frecuente: <strong>${esc(String(top?.[0]||'—'))}</strong> (${top?.[1]||0} veces)</div>
+    </div>`;
+  });
+  html+=`</div>`;
+  // Mini chart for first numeric col
+  if(numCols.length){
+    html+=`<div class="chart-card" style="max-width:600px">
+      <div class="cc-title"><span>Distribución — ${numCols[0]}</span><span>HISTOGRAMA</span></div>
+      <canvas id="kpiChart" style="max-height:200px"></canvas>
+    </div>`;
+  }
+  document.getElementById('kpiContent').innerHTML=html;
+  if(numCols.length){
+    const hist=buildHistogram(numCols[0],12);
+    new Chart(document.getElementById('kpiChart'),{
+      type:'bar',
+      data:{labels:hist.labels,datasets:[{label:'Frecuencia',data:hist.counts,backgroundColor:'#C0392BAA',borderColor:'#C0392B',borderWidth:1}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{family:'JetBrains Mono',size:9},maxRotation:45}},y:{ticks:{font:{family:'JetBrains Mono',size:9}}}}}
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════
+// PROFILE
+// ═══════════════════════════════════════════════
+function buildProfile(){
+  if(!rawData.length)return;
+  const totalCells=rawData.length*headers.length;
+  const totalNulls=rawData.reduce((a,r)=>a+headers.filter(h=>r[h]===null||r[h]===''||r[h]===undefined).length,0);
+  const dupCount=rawData.length-new Set(rawData.map(r=>JSON.stringify(r))).size;
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="stat-card"><div class="sc-label">Total Filas</div><div class="sc-val">${rawData.length.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="sc-label">Columnas</div><div class="sc-val">${headers.length}</div></div>
+    <div class="stat-card"><div class="sc-label">Completitud</div><div class="sc-val">${(((totalCells-totalNulls)/totalCells)*100).toFixed(1)}%</div></div>
+    <div class="stat-card ${dupCount>0?'':'green'}"><div class="sc-label">Duplicados</div><div class="sc-val" style="${dupCount>0?'color:var(--red)':''}">${dupCount.toLocaleString()}</div></div>`;
+  let html='';
+  headers.forEach(h=>{
+    const vals=rawData.map(r=>r[h]);
+    const nulls=vals.filter(v=>v===null||v===''||v===undefined).length;
+    const notNull=vals.filter(v=>v!==null&&v!==''&&v!==undefined);
+    const unique=new Set(notNull).size;
+    const isNum=isNumericCol(h);
+    let statsHtml=`<div class="cc-stat">Nulos: <span>${nulls} (${((nulls/rawData.length)*100).toFixed(1)}%)</span><br>Únicos: <span>${unique.toLocaleString()}</span><br>`;
+    if(isNum){
+      const nums=notNull.filter(v=>typeof v==='number');
+      if(nums.length){
+        const sum=nums.reduce((a,b)=>a+b,0),mean=sum/nums.length;
+        const sorted=[...nums].sort((a,b)=>a-b);
+        const median=sorted[Math.floor(sorted.length/2)];
+        const std=Math.sqrt(nums.reduce((a,b)=>a+Math.pow(b-mean,2),0)/nums.length);
+        statsHtml+=`Min: <span>${sorted[0].toLocaleString('es-PE',{maximumFractionDigits:2})}</span><br>Max: <span>${sorted[sorted.length-1].toLocaleString('es-PE',{maximumFractionDigits:2})}</span><br>Media: <span>${mean.toFixed(2)}</span><br>Mediana: <span>${median.toFixed(2)}</span><br>Std: <span>${std.toFixed(2)}</span>`;
+      }
+      statsHtml+=`</div>`;
+    } else {
+      const freq={};notNull.forEach(v=>{const s=String(v);freq[s]=(freq[s]||0)+1;});
+      const top5=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      const maxC=top5[0]?.[1]||1;
+      statsHtml+=`</div><div class="mini-bar-wrap">`;
+      top5.forEach(([val,cnt])=>{
+        const pct=(cnt/maxC*100).toFixed(0);
+        statsHtml+=`<div class="mini-bar-row"><span class="mini-bar-label" title="${esc(val)}">${esc(val.length>10?val.substring(0,10)+'…':val)}</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:${pct}%"></div></div><span class="mini-bar-count">${cnt}</span></div>`;
+      });
+      statsHtml+=`</div>`;
+    }
+    html+=`<div class="col-card"><div class="cc-name" title="${h}">${renamedCols[h]||h}</div><span class="cc-type ${isNum?'type-num':'type-str'}">${isNum?'Numérico':'Texto'}</span>${statsHtml}</div>`;
+  });
+  document.getElementById('colProfiles').innerHTML=html||'<div class="empty-state">Sin datos</div>';
+}
+
+// ═══════════════════════════════════════════════
+// OUTLIERS (IQR)
+// ═══════════════════════════════════════════════
+function detectOutliers(col){
+  const nums=rawData.map((r,i)=>({v:parseFloat(r[col]),i})).filter(x=>!isNaN(x.v));
+  const sorted=[...nums].sort((a,b)=>a.v-b.v);
+  const q1=sorted[Math.floor(sorted.length*.25)].v;
+  const q3=sorted[Math.floor(sorted.length*.75)].v;
+  const iqr=q3-q1;
+  const lo=q1-1.5*iqr,hi=q3+1.5*iqr;
+  return nums.filter(x=>x.v<lo||x.v>hi).map(x=>x.i);
+}
+
+function buildOutliers(){
+  if(!rawData.length)return;
+  const numCols=headers.filter(h=>isNumericCol(h));
+  let html='<div class="outlier-summary">';
+  let totalOutliers=0;
+  numCols.forEach(h=>{
+    const ols=detectOutliers(h);
+    totalOutliers+=ols.length;
+    const nums=rawData.map(r=>parseFloat(r[h])).filter(n=>!isNaN(n)).sort((a,b)=>a-b);
+    const q1=nums[Math.floor(nums.length*.25)],q3=nums[Math.floor(nums.length*.75)];
+    const iqr=q3-q1;
+    html+=`<div class="outlier-card">
+      <div class="oc-col">${renamedCols[h]||h}</div>
+      <div class="oc-count">${ols.length}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">outliers de ${nums.length} valores</div>
+      <div class="oc-range">Rango normal: [${(q1-1.5*iqr).toFixed(2)} , ${(q3+1.5*iqr).toFixed(2)}]<br>Q1: ${q1.toFixed(2)} · Q3: ${q3.toFixed(2)} · IQR: ${iqr.toFixed(2)}</div>
+      ${ols.length?`<button class="ctrl-btn red" style="margin-top:8px;font-size:9px;padding:4px 10px" onclick="showOutlierRows('${esc(h)}')">Ver filas →</button>`:''}
+    </div>`;
+  });
+  html+=`</div>`;
+  if(totalOutliers>0){
+    html+=`<div style="margin-bottom:16px"><button class="ctrl-btn red" onclick="removeAllOutliers()">Eliminar todos los outliers del dataset</button></div>`;
+  }
+  html+=`<div id="outlierTable"></div>`;
+  document.getElementById('outliersContent').innerHTML=html;
+}
+
+function showOutlierRows(col){
+  const ols=detectOutliers(col);
+  const rows=ols.map(i=>rawData[i]);
+  renderQueryResult(rows,`Outliers en "${col}" (${rows.length} filas)`,true);
+  document.getElementById('outliersContent').querySelector('#outlierTable').innerHTML=document.getElementById('outliersContent').querySelector('#outlierTable')?.innerHTML||'';
+  // Show in query panel
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-query').classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('[data-panel="query"]').classList.add('active');
+  renderQueryResult(rows,`Outliers en columna "${col}" (${rows.length} filas)`);
+}
+
+function removeAllOutliers(){
+  const numCols=headers.filter(h=>isNumericCol(h));
+  const outlierIdxs=new Set();
+  numCols.forEach(h=>detectOutliers(h).forEach(i=>outlierIdxs.add(i)));
+  const before=rawData.length;
+  rawData=rawData.filter((_,i)=>!outlierIdxs.has(i));
+  filteredData=[...rawData];
+  renderTable(); buildOutliers();
+  toast(`Eliminadas ${before-rawData.length} filas con outliers`);
+}
+
+// ═══════════════════════════════════════════════
+// CORRELACIÓN (Pearson)
+// ═══════════════════════════════════════════════
+function pearson(a,b){
+  const n=a.length;
+  const ma=a.reduce((s,v)=>s+v,0)/n,mb=b.reduce((s,v)=>s+v,0)/n;
+  const num=a.reduce((s,v,i)=>s+(v-ma)*(b[i]-mb),0);
+  const da=Math.sqrt(a.reduce((s,v)=>s+Math.pow(v-ma,2),0));
+  const db=Math.sqrt(b.reduce((s,v)=>s+Math.pow(v-mb,2),0));
+  if(da===0||db===0)return 0;
+  return num/(da*db);
+}
+
+function buildCorrelation(){
+  if(!rawData.length)return;
+  const numCols=headers.filter(h=>isNumericCol(h));
+  if(numCols.length<2){document.getElementById('corrContent').innerHTML='<div class="empty-state"><div class="empty-zh">关</div><div class="empty-msg">Se necesitan mínimo 2 columnas numéricas</div></div>';return;}
+  const vectors={};
+  numCols.forEach(h=>{vectors[h]=rawData.map(r=>parseFloat(r[h])).filter(n=>!isNaN(n));});
+  let html=`<div style="margin-bottom:12px;font-family:var(--mono);font-size:11px;color:var(--muted)">
+    Correlación de Pearson. Rojo = positiva fuerte · Azul = negativa · Blanco = sin correlación.
+  </div>
+  <div class="corr-grid-wrap"><table class="corr"><thead><tr><th></th>`;
+  numCols.forEach(h=>html+=`<th>${(renamedCols[h]||h).substring(0,12)}</th>`);
+  html+=`</tr></thead><tbody>`;
+  numCols.forEach(h1=>{
+    html+=`<tr><th>${(renamedCols[h1]||h1).substring(0,12)}</th>`;
+    numCols.forEach(h2=>{
+      const v=parseFloat(pearson(vectors[h1],vectors[h2]).toFixed(2));
+      let cls='corr-zero';
+      if(v>=.7)cls='corr-high';
+      else if(v>=.4)cls='corr-med';
+      else if(v>=.1)cls='corr-low';
+      else if(v<=-0.4)cls='corr-neg-med';
+      else if(v<=-0.7)cls='corr-neg-high';
+      html+=`<td class="${cls}" title="${h1} vs ${h2}: ${v}">${v.toFixed(2)}</td>`;
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  document.getElementById('corrContent').innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════
+// PIVOT TABLE
+// ═══════════════════════════════════════════════
+function buildPivot(){
+  const rowCol=document.getElementById('pivotRow').value;
+  const colCol=document.getElementById('pivotCol').value;
+  const valCol=document.getElementById('pivotVal').value;
+  const agg=document.getElementById('pivotAgg').value;
+  if(!rowCol||!colCol||!valCol){toast('Selecciona Filas, Columnas y Valores');return;}
+  if(rowCol===colCol){toast('Filas y Columnas deben ser diferentes');return;}
+
+  // Build pivot data
+  const rowKeys=[...new Set(rawData.map(r=>String(r[rowCol]??'')))].filter(Boolean).sort().slice(0,30);
+  const colKeys=[...new Set(rawData.map(r=>String(r[colCol]??'')))].filter(Boolean).sort().slice(0,15);
+  const cells={};
+  rawData.forEach(r=>{
+    const rk=String(r[rowCol]??''),ck=String(r[colCol]??'');
+    const v=parseFloat(r[valCol]);
+    if(!rk||!ck||isNaN(v))return;
+    const key=rk+'|||'+ck;
+    if(!cells[key])cells[key]={sum:0,count:0,max:-Infinity,min:Infinity};
+    cells[key].sum+=v;cells[key].count++;
+    cells[key].max=Math.max(cells[key].max,v);
+    cells[key].min=Math.min(cells[key].min,v);
+  });
+
+  const aggFn=(rk,ck)=>{
+    const d=cells[rk+'|||'+ck];
+    if(!d)return '—';
+    const v=agg==='sum'?d.sum:agg==='avg'?d.sum/d.count:agg==='count'?d.count:agg==='max'?d.max:d.min;
+    return isFinite(v)?v.toLocaleString('es-PE',{maximumFractionDigits:2}):'—';
+  };
+
+  let html=`<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:10px">
+    ${rowKeys.length} filas × ${colKeys.length} cols | ${agg.toUpperCase()} de ${valCol}
+    ${rowKeys.length>=30||colKeys.length>=15?'<span style="color:var(--red)"> (truncado a 30×15)</span>':''}
+  </div>
+  <div style="overflow-x:auto"><table class="pivot"><thead><tr>
+    <th>${rowCol} \\ ${colCol}</th>`;
+  colKeys.forEach(ck=>html+=`<th class="pivot-header">${esc(ck)}</th>`);
+  html+=`<th class="pivot-header">TOTAL</th></tr></thead><tbody>`;
+
+  rowKeys.forEach(rk=>{
+    let rowTotal=0,rowCount=0;
+    html+=`<tr><td class="pivot-dim">${esc(rk)}</td>`;
+    colKeys.forEach(ck=>{
+      const d=cells[rk+'|||'+ck];
+      const raw=d?(agg==='sum'?d.sum:agg==='avg'?d.sum/d.count:agg==='count'?d.count:agg==='max'?d.max:d.min):null;
+      if(raw!==null){rowTotal+=agg==='avg'?(d.sum):(raw);rowCount+=d?d.count:0;}
+      html+=`<td class="pivot-val">${aggFn(rk,ck)}</td>`;
+    });
+    const tot=agg==='avg'&&rowCount>0?(rowTotal/rowCount):rowTotal;
+    html+=`<td class="pivot-val" style="font-weight:500">${isFinite(tot)?tot.toLocaleString('es-PE',{maximumFractionDigits:2}):'—'}</td></tr>`;
+  });
+
+  // Footer totals
+  html+=`</tbody><tfoot><tr><td class="pivot-dim">TOTAL</td>`;
+  colKeys.forEach(ck=>{
+    let sum=0,cnt=0;
+    rowKeys.forEach(rk=>{const d=cells[rk+'|||'+ck];if(d){sum+=d.sum;cnt+=d.count;}});
+    const tot=agg==='avg'&&cnt>0?sum/cnt:agg==='count'?cnt:sum;
+    html+=`<td class="pivot-val">${tot.toLocaleString('es-PE',{maximumFractionDigits:2})}</td>`;
+  });
+  html+=`<td class="pivot-val">—</td></tr></tfoot></table></div>`;
+  document.getElementById('pivotResult').innerHTML=html;
+  toast('Pivot generado');
+}
+
+// ═══════════════════════════════════════════════
+// COLUMNAS CALCULADAS
+// ═══════════════════════════════════════════════
+function buildCalcPanel(){
+  // Populate formula tokens with current column names
+  const tokens=document.getElementById('formulaTokens');
+  if(tokens)tokens.innerHTML=headers.map(h=>`<span class="ftoken" onclick="insertToken('${esc(h)}')">${h}</span>`).join('');
+  renderCalcHistory();
+}
+
+function insertToken(name){
+  const inp=document.getElementById('formulaInput');
+  const pos=inp.selectionStart;
+  const val=inp.value;
+  inp.value=val.substring(0,pos)+name+val.substring(pos);
+  inp.focus();
+}
+
+function renderCalcHistory(){
+  if(!calcHistory.length)return;
+  let html=`<div class="tx-card"><h4>Columnas creadas (${calcHistory.length})</h4>`;
+  calcHistory.forEach((c,i)=>html+=`<div class="null-row"><span style="font-family:var(--mono);font-size:11px">${c.name} = ${c.formula}</span><button onclick="removeCalcCol(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-family:var(--mono);font-size:11px">✕</button></div>`);
+  html+=`</div>`;
+  document.getElementById('calcHistory').innerHTML=html;
+}
+
+function applyFormula(){
+  const name=document.getElementById('colNameInput').value.trim().replace(/\s+/g,'_');
+  const formula=document.getElementById('formulaInput').value.trim();
+  if(!name||!formula){toast('Nombre y fórmula requeridos');return;}
+  if(headers.includes(name)){toast('Esa columna ya existe');return;}
+
+  // Safe formula parser — replace col names with values
+  const errors=[];
+  const newData=rawData.map((row,idx)=>{
+    let expr=formula;
+    // Replace col references longest first to avoid partial match
+    const sortedHeaders=[...headers].sort((a,b)=>b.length-a.length);
+    sortedHeaders.forEach(h=>{
+      const val=typeof row[h]==='number'?row[h]:(parseFloat(row[h])||0);
+      expr=expr.replace(new RegExp('\\b'+h.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','g'),String(val));
+    });
+    // Allow safe functions
+    expr=expr.replace(/\bROUND\(/gi,'Math.round(').replace(/\bABS\(/gi,'Math.abs(')
+              .replace(/\bLOG\(/gi,'Math.log(').replace(/\bSQRT\(/gi,'Math.sqrt(');
+    try{
+      // eslint-disable-next-line no-new-func
+      const result=Function('"use strict";return ('+expr+')')();
+      return{...row,[name]:isFinite(result)?parseFloat(result.toFixed(6)):null};
+    } catch(e){
+      if(idx===0)errors.push(e.message);
+      return{...row,[name]:null};
+    }
+  });
+
+  if(errors.length){toast('Error en fórmula: '+errors[0]);return;}
+
+  rawData=newData; filteredData=[...rawData];
+  headers=[...headers,name];
+  calcHistory.push({name,formula});
+  populateSelects(); buildSlicers();
+  renderTable();
+  document.getElementById('colNameInput').value='';
+  document.getElementById('formulaInput').value='';
+  buildCalcPanel();
+  toast(`✓ Columna "${name}" creada`);
+
+  // Preview
+  const prev=rawData.slice(0,5).map(r=>({[name]:r[name]}));
+  renderQueryResult(prev,`Preview: "${name}" (primeras 5 filas)`);
+  document.getElementById('calcPreview').innerHTML=document.getElementById('queryResult').innerHTML;
+  document.getElementById('queryResult').innerHTML='';
+}
+
+function removeCalcCol(idx){
+  const c=calcHistory[idx];
+  rawData=rawData.map(r=>{const nr={...r};delete nr[c.name];return nr;});
+  filteredData=[...rawData];
+  headers=headers.filter(h=>h!==c.name);
+  calcHistory.splice(idx,1);
+  populateSelects(); buildSlicers(); renderTable(); buildCalcPanel();
+  toast(`Columna "${c.name}" eliminada`);
+}
+
+// ═══════════════════════════════════════════════
+// COLUMN MANAGER
+// ═══════════════════════════════════════════════
+function buildColManager(){
+  if(!rawData.length)return;
+  let html=`<div class="tx-card">
+    <h4>Visibilidad de columnas</h4>
+    <div class="col-manager">`;
+  headers.forEach(h=>{
+    const hidden=hiddenCols.has(h);
+    html+=`<div class="col-pill ${hidden?'hidden':''}">
+      <span style="font-family:var(--mono);font-size:11px">${renamedCols[h]||h}</span>
+      <span class="col-pill-toggle" onclick="toggleCol('${esc(h)}')" title="${hidden?'Mostrar':'Ocultar'}">${hidden?'○':'●'}</span>
+    </div>`;
+  });
+  html+=`</div></div>
+  <div class="tx-card" style="margin-top:16px">
+    <h4>Renombrar columna</h4>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <select class="ctrl-input" id="renameColSel">${headers.map(h=>`<option value="${esc(h)}">${h}</option>`).join('')}</select>
+      <span style="font-family:var(--mono);font-size:13px;color:var(--muted)">→</span>
+      <input type="text" class="ctrl-input" id="renameNewName" placeholder="nuevo nombre" style="width:200px">
+      <button class="ctrl-btn blue" onclick="renameCol()">Renombrar →</button>
+    </div>
+  </div>`;
+  document.getElementById('colManagerContent').innerHTML=html;
+}
+
+function toggleCol(col){
+  if(hiddenCols.has(col))hiddenCols.delete(col);
+  else hiddenCols.add(col);
+  buildColManager(); renderTable();
+}
+
+function renameCol(){
+  const col=document.getElementById('renameColSel').value;
+  const newName=document.getElementById('renameNewName').value.trim();
+  if(!newName){toast('Escribe un nuevo nombre');return;}
+  renamedCols[col]=newName;
+  buildColManager(); renderTable(); buildProfile();
+  toast(`"${col}" renombrada a "${newName}"`);
+}
+
+// ═══════════════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════════════
+function buildCharts(){
+  if(!rawData.length)return;
+  Object.values(chartInstances).forEach(c=>{try{c.destroy();}catch(e){}});
+  chartInstances={};
+  const numCols=headers.filter(h=>isNumericCol(h));
+  const strCols=headers.filter(h=>!isNumericCol(h));
+  let html='';
+  if(strCols.length&&numCols.length)html+=`<div class="chart-card"><div class="cc-title"><span>${strCols[0]} → ${numCols[0]}</span><span>BARRAS</span></div><canvas id="chart_a1"></canvas></div>`;
+  if(numCols.length)html+=`<div class="chart-card"><div class="cc-title"><span>Distribución: ${numCols[0]}</span><span>HISTOGRAMA</span></div><canvas id="chart_a2"></canvas></div>`;
+  if(numCols.length>=2)html+=`<div class="chart-card"><div class="cc-title"><span>${numCols[0]} vs ${numCols[1]}</span><span>DISPERSIÓN</span></div><canvas id="chart_a3"></canvas></div>`;
+  if(strCols.length)html+=`<div class="chart-card"><div class="cc-title"><span>Segmentos: ${strCols[0]}</span><span>DONA</span></div><canvas id="chart_a4"></canvas></div>`;
+  if(numCols.length>=2)html+=`<div class="chart-card"><div class="cc-title"><span>${numCols[0]} + ${numCols[1]}</span><span>BARRAS APILADAS</span></div><canvas id="chart_a5"></canvas></div>`;
+  html+=`<div class="chart-card" id="customChartCard" style="display:none"><div class="cc-title"><span id="customChartTitle">Gráfico Personalizado</span><span>CUSTOM</span></div><canvas id="chart_custom"></canvas></div>`;
+  document.getElementById('chartsGrid').innerHTML=html;
+
+  setTimeout(()=>{
+    const co=h=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{family:'JetBrains Mono',size:10},boxWidth:10}}},scales:{x:{ticks:{font:{family:'JetBrains Mono',size:9},maxRotation:45,autoSkip:true}},y:{ticks:{font:{family:'JetBrains Mono',size:9}}}}});
+    if(strCols.length&&numCols.length){const a=aggregateBy(strCols[0],numCols[0],15);chartInstances.a1=new Chart(document.getElementById('chart_a1'),{type:'bar',data:{labels:a.labels,datasets:[{label:numCols[0],data:a.values,backgroundColor:COLORS,borderRadius:3}]},options:co()});}
+    if(numCols.length){const h=buildHistogram(numCols[0],12);chartInstances.a2=new Chart(document.getElementById('chart_a2'),{type:'bar',data:{labels:h.labels,datasets:[{label:'Frecuencia',data:h.counts,backgroundColor:'#C0392B88',borderColor:'#C0392B',borderWidth:1}]},options:co()});}
+    if(numCols.length>=2){const pts=rawData.slice(0,400).map(r=>({x:r[numCols[0]],y:r[numCols[1]]})).filter(p=>p.x!=null&&p.y!=null);chartInstances.a3=new Chart(document.getElementById('chart_a3'),{type:'scatter',data:{datasets:[{label:`${numCols[0]}/${numCols[1]}`,data:pts,backgroundColor:'#2980B988',pointRadius:3}]},options:co()});}
+    if(strCols.length){const a=aggregateCount(strCols[0],8);chartInstances.a4=new Chart(document.getElementById('chart_a4'),{type:'doughnut',data:{labels:a.labels,datasets:[{data:a.values,backgroundColor:COLORS,borderWidth:2,borderColor:'white'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{family:'JetBrains Mono',size:10},boxWidth:10}}}}});}
+    if(numCols.length>=2){
+      const a=aggregateBy(strCols[0]||headers[0],numCols[0],10);
+      const a2=aggregateBy(strCols[0]||headers[0],numCols[1],10);
+      chartInstances.a5=new Chart(document.getElementById('chart_a5'),{type:'bar',data:{labels:a.labels,datasets:[{label:numCols[0],data:a.values,backgroundColor:'#C0392BAA'},{label:numCols[1],data:a2.values,backgroundColor:'#2980B9AA'}]},options:{...co(),scales:{...co().scales,x:{...co().scales.x,stacked:true},y:{...co().scales.y,stacked:true}}}});
+    }
+  },50);
+}
+
+function buildCustomChart(){
+  const x=document.getElementById('chartX').value;
+  const y=document.getElementById('chartY').value;
+  const rawType=document.getElementById('chartType').value;
+  if(!x||!y){toast('Selecciona Eje X y Eje Y');return;}
+  document.getElementById('customChartCard').style.display='block';
+  document.getElementById('customChartTitle').textContent=`${x} → ${y}`;
+  if(chartInstances.custom)try{chartInstances.custom.destroy();}catch(e){}
+
+  const type=rawType.split('-')[0];
+  const stacked=rawType.includes('stacked');
+  const area=rawType.includes('area');
+  let chartData,opts;
+
+  if(type==='scatter'){
+    const pts=rawData.slice(0,600).map(r=>({x:parseFloat(r[x]),y:parseFloat(r[y])})).filter(p=>!isNaN(p.x)&&!isNaN(p.y));
+    chartData={datasets:[{label:`${x}/${y}`,data:pts,backgroundColor:'#C0392B88',pointRadius:3}]};
+  } else if(type==='doughnut'||type==='radar'){
+    const a=aggregateBy(x,y,10);
+    chartData={labels:a.labels,datasets:[{label:y,data:a.values,backgroundColor:COLORS,borderWidth:2}]};
+  } else {
+    const a=aggregateBy(x,y,rawType==='bar-100'?30:20);
+    const vals=rawType==='bar-100'?normalizeToPercent(a.values):a.values;
+    chartData={labels:a.labels,datasets:[{label:y,data:vals,backgroundColor:type==='line'?'transparent':COLORS[0]+'AA',borderColor:COLORS[0],borderWidth:2,fill:area,tension:.4}]};
+  }
+
+  opts={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{family:'JetBrains Mono',size:10}}}},scales:{x:{stacked,ticks:{font:{family:'JetBrains Mono',size:9},maxRotation:45}},y:{stacked,ticks:{font:{family:'JetBrains Mono',size:9}}}}};
+  if(type==='doughnut')delete opts.scales;
+  chartInstances.custom=new Chart(document.getElementById('chart_custom'),{type,data:chartData,options:opts});
+}
+
+function normalizeToPercent(values){const t=values.reduce((a,b)=>a+b,0);return t>0?values.map(v=>parseFloat((v/t*100).toFixed(1))):values;}
+
+// ═══════════════════════════════════════════════
+// TRANSFORM
+// ═══════════════════════════════════════════════
+function buildTransform(){
+  if(!rawData.length)return;
+  const nullReport=headers.map(h=>{const n=rawData.filter(r=>r[h]===null||r[h]===''||r[h]===undefined).length;return{col:h,nulls:n,pct:((n/rawData.length)*100).toFixed(1)};}).filter(r=>r.nulls>0).sort((a,b)=>b.nulls-a.nulls);
+  const seen=new Set();let dups=0;
+  rawData.forEach(r=>{const k=JSON.stringify(r);if(seen.has(k))dups++;else seen.add(k);});
+  document.getElementById('transformContent').innerHTML=`
+  <div class="transform-row">
+    <div class="tx-card">
+      <h4>Nulos por columna</h4>
+      ${!nullReport.length?'<div style="color:var(--muted);font-family:var(--mono);font-size:12px">✓ Sin nulos</div>':nullReport.map(r=>`<div class="null-row"><span style="font-family:var(--mono);font-size:11px">${r.col}</span><span class="null-pct">${r.nulls} (${r.pct}%)</span></div>`).join('')}
+    </div>
+    <div class="tx-card">
+      <h4>Duplicados</h4>
+      <div style="font-family:var(--mono);font-size:13px">
+        ${dups===0?'<span style="color:var(--muted)">✓ Sin duplicados</span>':`<span style="color:var(--red)">${dups} filas duplicadas</span><br><button class="ctrl-btn red" style="margin-top:10px" onclick="removeDups()">Eliminar →</button>`}
+      </div>
+    </div>
+  </div>
+  <div class="tx-card">
+    <h4>Acciones de Limpieza</h4>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+      <button class="ctrl-btn" onclick="fillNullsWithZero()">Nulos numéricos → 0</button>
+      <button class="ctrl-btn" onclick="fillNullsWithMean()">Nulos numéricos → Media</button>
+      <button class="ctrl-btn" onclick="fillNullsWithNA()">Nulos texto → "N/A"</button>
+      <button class="ctrl-btn red" onclick="removeDups()">Eliminar duplicados</button>
+      <button class="ctrl-btn" onclick="trimStrings()">Trim espacios</button>
+      <button class="ctrl-btn" onclick="normalizeHeaders()">Normalizar nombres</button>
+      <button class="ctrl-btn" onclick="uppercaseStrings()">Texto → MAYÚSCULAS</button>
+      <button class="ctrl-btn" onclick="lowercaseStrings()">Texto → minúsculas</button>
+    </div>
+  </div>`;
+}
+
+function removeDups(){const b=rawData.length;const s=new Set();rawData=rawData.filter(r=>{const k=JSON.stringify(r);if(s.has(k))return false;s.add(k);return true;});filteredData=[...rawData];renderTable();buildTransform();toast(`Eliminadas ${b-rawData.length} duplicadas`);}
+function fillNullsWithZero(){headers.filter(h=>isNumericCol(h)).forEach(h=>{rawData=rawData.map(r=>{if(r[h]===null||r[h]===undefined||r[h]==='')return{...r,[h]:0};return r;});});filteredData=[...rawData];toast('Nulos → 0');buildTransform();}
+function fillNullsWithMean(){headers.filter(h=>isNumericCol(h)).forEach(h=>{const nums=rawData.map(r=>parseFloat(r[h])).filter(n=>!isNaN(n));if(!nums.length)return;const mean=nums.reduce((a,b)=>a+b,0)/nums.length;rawData=rawData.map(r=>{if(r[h]===null||r[h]===undefined||r[h]==='')return{...r,[h]:parseFloat(mean.toFixed(4))};return r;});});filteredData=[...rawData];toast('Nulos → Media de cada columna');buildTransform();}
+function fillNullsWithNA(){headers.filter(h=>!isNumericCol(h)).forEach(h=>{rawData=rawData.map(r=>{if(r[h]===null||r[h]===undefined||r[h]==='')return{...r,[h]:'N/A'};return r;});});filteredData=[...rawData];toast('Nulos texto → "N/A"');buildTransform();}
+function trimStrings(){headers.filter(h=>!isNumericCol(h)).forEach(h=>{rawData=rawData.map(r=>{if(typeof r[h]==='string')return{...r,[h]:r[h].trim()};return r;});});filteredData=[...rawData];toast('Trim aplicado');buildTransform();}
+function normalizeHeaders(){const nh=headers.map(h=>h.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''));rawData=rawData.map(r=>{const nr={};headers.forEach((h,i)=>{nr[nh[i]]=r[h];});return nr;});headers=nh;filteredData=[...rawData];populateSelects();renderTable();buildTransform();toast('Columnas normalizadas');}
+function uppercaseStrings(){headers.filter(h=>!isNumericCol(h)).forEach(h=>{rawData=rawData.map(r=>{if(typeof r[h]==='string')return{...r,[h]:r[h].toUpperCase()};return r;});});filteredData=[...rawData];toast('Texto → MAYÚSCULAS');}
+function lowercaseStrings(){headers.filter(h=>!isNumericCol(h)).forEach(h=>{rawData=rawData.map(r=>{if(typeof r[h]==='string')return{...r,[h]:r[h].toLowerCase()};return r;});});filteredData=[...rawData];toast('Texto → minúsculas');}
+
+// ═══════════════════════════════════════════════
+// QUERY ENGINE
+// ═══════════════════════════════════════════════
+function setQuery(q){document.getElementById('queryInput').value=q;}
+function runQuery(){
+  if(!rawData.length){toast('Carga datos primero');return;}
+  const q=document.getElementById('queryInput').value.trim().toLowerCase();
+  if(!q)return;
+  let result=[],title='';
+  const firstMatch=q.match(/primeras?\s+(\d+)\s+filas?/);
+  const lastMatch=q.match(/últimas?\s+(\d+)\s+filas?/);
+  if(firstMatch){result=rawData.slice(0,parseInt(firstMatch[1]));title=`Primeras ${firstMatch[1]} filas`;}
+  else if(lastMatch){result=rawData.slice(-parseInt(lastMatch[1]));title=`Últimas ${lastMatch[1]} filas`;}
+  else if(/estadística|resumen/.test(q)){return showStats();}
+  else if(/outlier/.test(q)){
+    const col=headers.find(h=>q.includes(h.toLowerCase()))||headers.find(h=>isNumericCol(h));
+    if(col){const ols=detectOutliers(col);result=ols.map(i=>rawData[i]);title=`Outliers en "${col}" (${result.length})`;}
+    else{toast('Especifica columna');return;}
+  }
+  else if(/valores?\s+únicos?\s+de\s+(.+)/.test(q)){
+    const m=q.match(/valores?\s+únicos?\s+de\s+(.+)/);const col=findCol(m[1]);
+    if(!col){toast('Columna no encontrada');return;}
+    const u=[...new Set(rawData.map(r=>r[col]))].filter(v=>v!=null&&v!=='');
+    result=u.map(v=>({[col]:v}));title=`Únicos en "${col}" (${u.length})`;
+  }
+  else if(/contar\s+(?:filas\s+)?por\s+(.+)/.test(q)){
+    const m=q.match(/contar\s+(?:filas\s+)?por\s+(.+)/);const col=findCol(m[1]);
+    if(!col){toast('Columna no encontrada');return;}
+    const f={};rawData.forEach(r=>{const k=String(r[col]??'null');f[k]=(f[k]||0)+1;});
+    result=Object.entries(f).sort((a,b)=>b[1]-a[1]).map(([v,c])=>({[col]:v,conteo:c}));title=`Conteo por "${col}"`;
+  }
+  else if(/ordenar\s+por\s+(.+)/.test(q)){
+    const m=q.match(/ordenar\s+por\s+(.+?)(?:\s+(asc|desc|ascendente|descendente))?$/);
+    const col=findCol(m[1].replace(/\s*(asc|desc|ascendente|descendente)$/i,'').trim());
+    if(!col){toast('Columna no encontrada');return;}
+    const desc=/desc|descendente/.test(q);
+    result=[...rawData].sort((a,b)=>{const va=a[col],vb=b[col];if(typeof va==='number')return desc?vb-va:va-vb;return desc?String(vb).localeCompare(String(va)):String(va).localeCompare(String(vb));}).slice(0,100);
+    title=`Ordenado por "${col}" ${desc?'DESC':'ASC'} (top 100)`;
+  }
+  else if(/nulos?/.test(q)){result=rawData.filter(r=>headers.some(h=>r[h]===null||r[h]===''||r[h]===undefined));title=`Filas con nulos (${result.length})`;}
+  else{result=rawData.filter(r=>Object.values(r).some(v=>String(v??'').toLowerCase().includes(q)));title=`Búsqueda "${q}" (${result.length})`;}
+  renderQueryResult(result,title);
+}
+
+function showStats(){
+  const numCols=headers.filter(h=>isNumericCol(h));
+  const rows=numCols.map(h=>{
+    const vals=rawData.map(r=>parseFloat(r[h])).filter(n=>!isNaN(n));
+    if(!vals.length)return null;
+    const sum=vals.reduce((a,b)=>a+b,0),mean=sum/vals.length;
+    const sorted=[...vals].sort((a,b)=>a-b);
+    return{Columna:h,N:vals.length,Suma:parseFloat(sum.toFixed(2)),Media:parseFloat(mean.toFixed(2)),Mediana:parseFloat(sorted[Math.floor(sorted.length/2)].toFixed(2)),Min:sorted[0],Max:sorted[sorted.length-1],Std:parseFloat(Math.sqrt(vals.reduce((a,b)=>a+Math.pow(b-mean,2),0)/vals.length).toFixed(2))};
+  }).filter(Boolean);
+  renderQueryResult(rows,'Estadísticas numéricas');
+}
+
+function renderQueryResult(result,title){
+  if(!result.length){document.getElementById('queryResult').innerHTML=`<div class="empty-state"><div class="empty-zh">零</div><div class="empty-msg">Sin resultados</div></div>`;return;}
+  const cols=Object.keys(result[0]);
+  let html=`<div style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+    <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">${title}</div>
+    <button class="ctrl-btn" onclick="exportQR()">↓ CSV</button>
+  </div><div class="table-wrap"><table class="dt"><thead><tr>`;
+  cols.forEach(c=>html+=`<th>${c}</th>`);
+  html+=`</tr></thead><tbody>`;
+  result.slice(0,500).forEach(row=>{
+    html+=`<tr>`;
+    cols.forEach(c=>{const v=row[c];if(v===null||v===undefined)html+=`<td class="null-val">null</td>`;else if(typeof v==='number')html+=`<td class="num">${v.toLocaleString('es-PE',{maximumFractionDigits:4})}</td>`;else html+=`<td>${esc(String(v))}</td>`;});
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  if(result.length>500)html+=`<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:6px">Mostrando 500/${result.length}</div>`;
+  document.getElementById('queryResult').innerHTML=html;
+  window._qr=result;
+}
+function exportQR(){if(!window._qr)return;dlBlob(Papa.unparse(window._qr),'text/csv','query_result.csv');toast('Exportado');}
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+function isNumericCol(col){
+  const s=rawData.slice(0,30).map(r=>r[col]).filter(v=>v!==null&&v!==''&&v!==undefined);
+  if(!s.length)return false;
+  return s.filter(v=>typeof v==='number'||(!isNaN(parseFloat(v))&&v!=='')).length>s.length*.7;
+}
+function findCol(name){name=name.trim().toLowerCase();return headers.find(h=>h.toLowerCase()===name)||headers.find(h=>h.toLowerCase().includes(name));}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function aggregateBy(catCol,numCol,limit=15){const a={};rawData.forEach(r=>{const k=String(r[catCol]??'null');const v=parseFloat(r[numCol])||0;a[k]=(a[k]||0)+v;});const s=Object.entries(a).sort((x,y)=>y[1]-x[1]).slice(0,limit);return{labels:s.map(e=>e[0]),values:s.map(e=>parseFloat(e[1].toFixed(2)))};}
+function aggregateCount(col,limit=8){const f={};rawData.forEach(r=>{const k=String(r[col]??'null');f[k]=(f[k]||0)+1;});const s=Object.entries(f).sort((a,b)=>b[1]-a[1]).slice(0,limit);return{labels:s.map(e=>e[0]),values:s.map(e=>e[1])};}
+function buildHistogram(col,bins){const nums=rawData.map(r=>parseFloat(r[col])).filter(n=>!isNaN(n));const mn=Math.min(...nums),mx=Math.max(...nums),sz=(mx-mn)/bins;const counts=Array(bins).fill(0),labels=[];for(let i=0;i<bins;i++)labels.push((mn+i*sz).toFixed(1));nums.forEach(n=>{const b=Math.min(Math.floor((n-mn)/sz),bins-1);counts[b]++;});return{labels,counts};}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),3000);}
+</script>
+
+<footer style="background:var(--ink2);color:rgba(247,244,238,.35);font-family:var(--mono);font-size:10px;text-align:center;padding:16px 40px;border-top:1px solid rgba(255,255,255,.06);letter-spacing:.05em;">
+  © 2026 <strong style="color:rgba(247,244,238,.6)">数据 DataStudio</strong> · Análisis Profesional de Datos · Todos los derechos reservados
+  &nbsp;·&nbsp; <a href="mailto:villegasclei27@gmail.com" style="color:rgba(124,106,247,.7);text-decoration:none">villegasclei27@gmail.com</a>
+  &nbsp;·&nbsp; Sin backend · GitHub Pages
+</footer>
+</body>
+</html>
